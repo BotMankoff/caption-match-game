@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caption Matching Game</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .cartoons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .cartoon-box {
+            border: 3px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .cartoon-box.correct {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        
+        .cartoon-box.incorrect {
+            border-color: #f44336;
+            background-color: #ffebee;
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .cartoon-image {
+            width: 100%;
+            height: 250px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .cartoon-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .image-placeholder {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+        
+        .image-placeholder h4 {
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        .caption-slot {
+            min-height: 60px;
+            padding: 10px;
+            border: 2px dashed #999;
+            border-radius: 5px;
+            background-color: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .caption-slot.filled {
+            border-style: solid;
+            background-color: #e3f2fd;
+        }
+        
+        .captions-container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .captions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .caption-item {
+            background-color: white;
+            padding: 12px 20px;
+            border: 2px solid #2196F3;
+            border-radius: 25px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            max-width: 300px;
+            text-align: center;
+        }
+        
+        .caption-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .caption-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .caption-item.used {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .check-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .check-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .reset-btn {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background-color: #e68900;
+        }
+        
+        .score {
+            text-align: center;
+            font-size: 20px;
+            margin-top: 20px;
+            color: #333;
+        }
+        
+        .instructions {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Cartoon Caption Matching Game 🎨</h1>
+    
+    <div class="game-container">
+        <div class="instructions">
+            <strong>How to play:</strong> Drag each caption to the cartoon you think it belongs to. 
+            When you're ready, click "Check Answers" to see how you did!
+        </div>
+        
+        <div class="captions-container">
+            <h3 style="text-align: center; margin-bottom: 15px;">Available Captions:</h3>
+            <div class="captions-list" id="captionsList"></div>
+        </div>
+        
+        <div class="cartoons-grid" id="cartoonsGrid"></div>
+        
+        <div class="controls">
+            <button class="check-btn" onclick="checkAnswers()">Check Answers</button>
+            <button class="reset-btn" onclick="resetGame()">Reset Game</button>
+        </div>
+        
+        <div class="score" id="scoreDisplay"></div>
+    </div>
+    
+    <script>
+        // Game data with descriptions
+        const gameData = [
+            { 
+                id: 1, 
+                imageFile: "cartoon1.jpg", 
+                description: "Baseball Stadium Scene",
+                details: "Young player in dugout with coaches watching",
+                caption: "He may need more time to develop.", 
+                captionId: "800" 
+            },
+            { 
+                id: 2, 
+                imageFile: "cartoon2.jpg", 
+                description: "Construction Workers on Beam",
+                details: "Workers sitting on steel beam high above city, one delivering pizza",
+                caption: "Separate checks? Really?", 
+                captionId: "802" 
+            },
+            { 
+                id: 3, 
+                imageFile: "cartoon3.jpg", 
+                description: "Car Dealership Scene",
+                details: "Two men looking at a tiny toy-like car",
+                caption: "It's like new. The previous owner preferred the box it came in.", 
+                captionId: "803" 
+            },
+            { 
+                id: 4, 
+                imageFile: "cartoon4.jpg", 
+                description: "Living Room Scene",
+                details: "Giant creature filling the room with two people on couch",
+                caption: "He said he had to drag you here kicking and screaming.", 
+                captionId: "805" 
+            },
+            { 
+                id: 5, 
+                imageFile: "cartoon5.jpg", 
+                description: "Beach/Lifeguard Scene",
+                details: "Knight in armor as lifeguard with modern beachgoer",
+                caption: "Could you rub some WD-40 on my back?", 
+                captionId: "806" 
+            },
+            { 
+                id: 6, 
+                imageFile: "cartoon6.jpg", 
+                description: "Corn Maze Scene",
+                details: "Scientists/researchers looking at elaborate corn maze",
+                caption: "Our research is backed by a hedge fund.", 
+                captionId: "807" 
+            }
+        ];
+        
+        let currentPlacements = {};
+        
+        // Initialize the game
+        function initGame() {
+            // Shuffle captions
+            const shuffledCaptions = [...gameData].sort(() => Math.random() - 0.5);
+            
+            // Create caption elements
+            const captionsList = document.getElementById('captionsList');
+            captionsList.innerHTML = '';
+            
+            shuffledCaptions.forEach((item, index) => {
+                const captionEl = document.createElement('div');
+                captionEl.className = 'caption-item';
+                captionEl.draggable = true;
+                captionEl.textContent = item.caption;
+                captionEl.dataset.captionId = item.captionId;
+                captionEl.id = `caption-${index}`;
+                
+                // Add drag event listeners
+                captionEl.addEventListener('dragstart', handleDragStart);
+                captionEl.addEventListener('dragend', handleDragEnd);
+                
+                captionsList.appendChild(captionEl);
+            });
+            
+            // Create cartoon boxes
+            const cartoonsGrid = document.getElementById('cartoonsGrid');
+            cartoonsGrid.innerHTML = '';
+            
+            gameData.forEach((item) => {
+                const cartoonBox = document.createElement('div');
+                cartoonBox.className = 'cartoon-box';
+                cartoonBox.dataset.cartoonId = item.id;
+                
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'cartoon-image';
+                
+                // Try to load image, fallback to placeholder
+                const img = document.createElement('img');
+                img.src = item.imageFile;
+                img.alt = item.description;
+                img.onerror = function() {
+                    // If image fails to load, show placeholder
+                    imageDiv.innerHTML = `
+                        <div class="image-placeholder">
+                            <h4>Cartoon ${item.id}</h4>
+                            <p><strong>${item.description}</strong></p>
+                            <p style="font-size: 12px; color: #777;">${item.details}</p>
+                        </div>
+                    `;
+                };
+                imageDiv.appendChild(img);
+                
+                const captionSlot = document.createElement('div');
+                captionSlot.className = 'caption-slot';
+                captionSlot.textContent = 'Drop caption here';
+                captionSlot.dataset.cartoonId = item.id;
+                
+                // Add drop event listeners
+                captionSlot.addEventListener('dragover', handleDragOver);
+                captionSlot.addEventListener('drop', handleDrop);
+                captionSlot.addEventListener('dragleave', handleDragLeave);
+                
+                cartoonBox.appendChild(imageDiv);
+                cartoonBox.appendChild(captionSlot);
+                cartoonsGrid.appendChild(cartoonBox);
+            });
+            
+            // Clear score display
+            document.getElementById('scoreDisplay').textContent = '';
+        }
+        
+        // Drag and drop handlers
+        let draggedElement = null;
+        
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            e.target.style.backgroundColor = '#bbdefb';
+            return false;
+        }
+        
+        function handleDragLeave(e) {
+            e.target.style.backgroundColor = '';
+        }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            const slot = e.target;
+            const cartoonId = slot.dataset.cartoonId;
+            
+            // Clear any existing caption in this slot
+            if (currentPlacements[cartoonId]) {
+                const prevCaption = document.querySelector(`[data-caption-id="${currentPlacements[cartoonId]}"]`);
+                if (prevCaption) {
+                    prevCaption.classList.remove('used');
+                }
+            }
+            
+            // Place the new caption
+            slot.textContent = draggedElement.textContent;
+            slot.classList.add('filled');
+            slot.style.backgroundColor = '';
+            
+            currentPlacements[cartoonId] = draggedElement.dataset.captionId;
+            draggedElement.classList.add('used');
+            
+            return false;
+        }
+        
+        function checkAnswers() {
+            let correct = 0;
+            const total = gameData.length;
+            
+            // Reset all cartoon box states
+            document.querySelectorAll('.cartoon-box').forEach(box => {
+                box.classList.remove('correct', 'incorrect');
+            });
+            
+            // Check each placement
+            gameData.forEach(item => {
+                const cartoonBox = document.querySelector(`[data-cartoon-id="${item.id}"]`);
+                const placedCaptionId = currentPlacements[item.id];
+                
+                if (placedCaptionId === item.captionId) {
+                    cartoonBox.classList.add('correct');
+                    correct++;
+                } else if (placedCaptionId) {
+                    cartoonBox.classList.add('incorrect');
+                }
+            });
+            
+            // Display score
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            if (correct === total) {
+                scoreDisplay.innerHTML = `🎉 Perfect! You got all ${total} correct! 🎉`;
+                scoreDisplay.style.color = '#4CAF50';
+            } else {
+                scoreDisplay.innerHTML = `You got ${correct} out of ${total} correct. Keep trying!`;
+                scoreDisplay.style.color = correct > total/2 ? '#ff9800' : '#f44336';
+            }
+        }
+        
+        function resetGame() {
+            currentPlacements = {};
+            initGame();
+        }
+        
+        // Initialize game on load
+        window.onload = initGame;
+    </script>
+</body>
+</html>
